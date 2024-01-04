@@ -8,12 +8,23 @@
  */
 
 import {onRequest} from "firebase-functions/v2/https";
-import * as logger from "firebase-functions/logger";
+import * as puppeteer from "puppeteer";
 
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
+export const join = onRequest(async (request, response) => {
+    const browser = await puppeteer.launch({
+        headless: true,
+    });
+    const page = await browser.newPage();
+    // url parametresinin gerçekten bir url olup olmadığını regex ile kontrol eder ve değilse hata döner
+    const urlRegex = new RegExp("^(http|https)://", "i");
+    if (!urlRegex.test(<string>request.query.url)) {
+        response.status(400).send("Invalid url parameter");
+        return;
+    }
 
-export const helloWorld = onRequest((request, response) => {
-  logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello from Firebase!");
+    await page.goto(<string>request.query.url);
+    const imageBuffer = await page.screenshot();
+    await browser.close();
+    response.set("Content-Type", "image/png");
+    response.send(imageBuffer);
 });
